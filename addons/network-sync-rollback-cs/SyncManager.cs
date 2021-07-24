@@ -117,6 +117,8 @@ public class SyncManager : Node
         AddChild(networkAdaptor);
         networkAdaptor.Connect(nameof(NetworkAdaptor.ReceivedInputTick), this,
             nameof(ReceiveInputTick));
+        networkAdaptor.Connect(nameof(NetworkAdaptor.Pinged), this, nameof(OnPinged));
+        networkAdaptor.Connect(nameof(NetworkAdaptor.PingedBack), this, nameof(OnPingedBack));
         networkAdaptor.Attach(this);
     }
 
@@ -179,34 +181,38 @@ public class SyncManager : Node
             
             Dictionary msg = new Dictionary();
             msg.Add("local_time", systemTime.ToString());
-            RpcId(id, nameof(GetRemotePing), msg);
+            // Ping the player
+            networkAdaptor.PingPeer(id, GD.Var2Bytes(msg));
         }
     }
 
-    [Remote]
-    private void GetRemotePing (Dictionary msg)
+    // When someone ping us
+    private void OnPinged (int peerID, byte[] message)
     {
-        int peerID = GetTree().GetRpcSenderId();
+        Dictionary pingInfo = GD.Bytes2Var(message) as Dictionary;
+        
         if (peerID == GetTree().GetNetworkUniqueId()) return;
         
-        msg["remote_time"] = OS.GetSystemTimeMsecs().ToString();
-        RpcId(peerID, nameof(GetRemotePingBack), msg);
+        pingInfo["remote_time"] = OS.GetSystemTimeMsecs().ToString();
+        // Send back a ping request
+        networkAdaptor.PingBackPeer(peerID, GD.Var2Bytes(pingInfo));
     }
 
-    [Remote]
-    private void GetRemotePingBack (Dictionary msg)
+    private void OnPingedBack (int peerID, byte[] message)
     {
+        Dictionary pingInfo = GD.Bytes2Var(message) as Dictionary;
+        
         ulong systemTime = OS.GetSystemTimeMsecs();
         int peerId = GetTree().GetRpcSenderId();
         Peer peer = _peers[peerId];
 
         peer.LastPingReceived = systemTime;
-        peer.RTT = systemTime - ulong.Parse((string)msg["local_time"]);
-        peer.DeltaTime = long.Parse((string)msg["remote_time"]) - long.Parse((string)msg["local_time"]) - (long)(peer.RTT / 2.0);
+        peer.RTT = systemTime - ulong.Parse((string)pingInfo["local_time"]);
+        peer.DeltaTime = long.Parse((string)pingInfo["remote_time"]) - long.Parse((string)pingInfo["local_time"]) - (long)(peer.RTT / 2.0);
         
         EmitSignal(nameof(PeerPingedBack), peer);
     }
-    
+
     public async void Start ()
     {
         Debug.Assert(GetTree().IsNetworkServer(), "Start() should only be called on the host");
