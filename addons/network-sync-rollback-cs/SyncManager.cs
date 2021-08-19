@@ -912,17 +912,14 @@ public class SyncManager : Node
                 }
             }
         }
-
-        // What the hell can't you just type your fucking dictionary ???
-        // i need to put a int where it want a fucking Dictionary
-        
-        input["$"] = new G.Dictionary<int, string> {{0, GD.Hash(cleanedInput).ToString()}};
     }
 
     public void ReceiveInputTick (int peerID, byte[] serializedMsg)
     {
         if (!started) return;
 
+        //TODO man i hope no one read this
+        //TODO planned rework: use a class/struct instead of dictionaries
         string raw = Encoding.ASCII.GetString(serializedMsg);
         //GD.Print(raw);
         Dictionary rawAsDictionary = JSON.Parse(raw).Result as Dictionary;
@@ -935,8 +932,8 @@ public class SyncManager : Node
         
         foreach (var entry in converted)
         {
-            //allRemoteInput[int.Parse(entry.Key)] = StringToByteArray(entry.Value);
-            allRemoteInput[int.Parse(entry.Key)] = entry.Value;
+            //allRemoteInput[int.Parse(entry.Key)] = entry.Value;
+            allRemoteInput.Add(int.Parse(entry.Key), entry.Value);
         }
 
         int[] allRemoteTicks = allRemoteInput.Keys.ToArray();
@@ -944,7 +941,7 @@ public class SyncManager : Node
 
         var firstRemoteTick = allRemoteTicks[0];
         var lastRemoteTick = allRemoteTicks.Last();
-        //GD.Print("received ticks from " + firstRemoteTick + " to " + lastRemoteTick);
+   
         if (firstRemoteTick >= inputTick + MAX_BUFFER_SIZE)
         {
             GD.Print("Discarding message from the future");
@@ -986,8 +983,8 @@ public class SyncManager : Node
             {
                 var localInput = inputFrame.GetPlayerInput(peerID);
                 inputFrame.Players[peerID] = new InputForPlayer(remoteInput, false);
-
-                if(localInput["$"].First().Value != remoteInput["$"].First().Value)
+                
+                if(JSON.Print(localInput) != JSON.Print(remoteInput))
                 {
                     rollbackTicks = tickDelta + 1;
                     EmitSignal(nameof(RollbackFlagged), remoteTick, peerID, localInput, remoteInput);
