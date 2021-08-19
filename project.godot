@@ -12,13 +12,12 @@ config_version=4
 
 config/name="UDP Rollback"
 run/main_scene="res://Main.tscn"
-config/icon="res://icon.png"
+config/icon="res://demo_assets/icon.png"
 
 [autoload]
 
 SyncManager="*res://addons/network-sync-rollback-cs/SyncManager.cs"
-Network="*res://network/Network.cs"
-SyncDebugger="*res://addons/network-sync-rollback/SyncDebugger.gd"
+SyncDebugger="*res://addons/network-sync-rollback-cs/SyncDebugger.gd"
 
 [debug]
 
@@ -37,7 +36,7 @@ window/vsync/use_vsync=false
 
 [editor_plugins]
 
-enabled=PoolStringArray( "res://addons/multirun/plugin.cfg", "res://addons/network-sync-rollback/plugin.cfg" )
+enabled=PoolStringArray(  )
 
 [input]
 
@@ -77,4 +76,3 @@ common/enable_pause_aware_picking=true
 quality/driver/driver_name="GLES2"
 vram_compression/import_etc=true
 vram_compression/import_etc2=false
-environment/default_environment="res://default_env.tres"
