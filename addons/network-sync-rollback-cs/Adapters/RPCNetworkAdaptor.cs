@@ -1,5 +1,9 @@
 using Godot;
 
+/// <summary>
+/// Example Network Adapter
+/// Use the built-in multiplayer HLAPI & RPCs
+/// </summary>
 public class RPCNetworkAdaptor : NetworkAdaptor
 {
     public override void SendInputTick (int peerID, byte[] msg)

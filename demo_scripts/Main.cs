@@ -37,8 +37,8 @@ public class Main : Node2D
         peer.CreateServer(SERVER_PORT, 2);
         
         UPNP upnp = new UPNP();
-        //upnp.Discover();
-        //upnp.AddPortMapping(SERVER_PORT);
+        upnp.Discover();
+        upnp.AddPortMapping(SERVER_PORT);
         
         GetTree().NetworkPeer = peer;
         ConnectionPanel.Visible = false;

@@ -1,6 +1,10 @@
 using Godot;
 using System;
 
+/// <summary>
+/// Abstract class to make your own network adaptor
+/// You'll need to provide way to send crucial data for the SyncManager
+/// </summary>
 public abstract class NetworkAdaptor : Node
 {
     [Signal] public delegate void ReceivedInputTick (int peerID, byte[] msg);

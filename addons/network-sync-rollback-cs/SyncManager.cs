@@ -1,14 +1,13 @@
 using Godot;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Dictionary = Godot.Collections.Dictionary;
 using Array = Godot.Collections.Array;
 using G = Godot.Collections;
+
 enum InputMessageKey 
 {
     TICK,
@@ -16,6 +15,10 @@ enum InputMessageKey
     INPUT,
 }
 
+/// <summary>
+/// This beast handle all the sync & rollback logic
+/// Singleton pattern
+/// </summary>
 public class SyncManager : Node
 {
     public static SyncManager singleton;
@@ -80,6 +83,7 @@ public class SyncManager : Node
     {
         singleton = this;
         
+        // TODO move to NetworkAdaptor
         GetTree().Connect("network_peer_disconnected", this, nameof(RemovePeer));
         GetTree().Connect("server_disconnected", this, nameof(Stop));
         
@@ -172,16 +176,22 @@ public class SyncManager : Node
             _peers.Remove(id);
     }
 
+    // Ping other players every seconds
     private void OnPingTimerTimeout ()
     {
+        // get the current timestamp
         ulong systemTime = OS.GetSystemTimeMsecs();
+        // loop through every peers
         foreach (int id in _peers.Keys)
         {
             if (id == GetTree().GetNetworkUniqueId()) continue;
             
-            Dictionary msg = new Dictionary();
-            msg.Add("local_time", systemTime.ToString());
-            // Ping the player
+            // Create a dictionary with the timestamp
+            Dictionary msg = new Dictionary()
+            {
+                { "local_time", systemTime.ToString() }
+            };
+            // Send it through the NetAdapter
             networkAdaptor.PingPeer(id, GD.Var2Bytes(msg));
         }
     }
@@ -189,15 +199,18 @@ public class SyncManager : Node
     // When someone ping us
     private void OnPinged (int peerID, byte[] message)
     {
+        // Deserialize
         Dictionary pingInfo = GD.Bytes2Var(message) as Dictionary;
         
         if (peerID == GetTree().GetNetworkUniqueId()) return;
         
+        // Add a new entry with the actual timestamp
         pingInfo["remote_time"] = OS.GetSystemTimeMsecs().ToString();
         // Send back a ping request
         networkAdaptor.PingBackPeer(peerID, GD.Var2Bytes(pingInfo));
     }
 
+    // When someone pinged us back
     private void OnPingedBack (int peerID, byte[] message)
     {
         Dictionary pingInfo = GD.Bytes2Var(message) as Dictionary;
