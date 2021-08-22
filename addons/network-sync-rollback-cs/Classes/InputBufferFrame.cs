@@ -13,7 +13,7 @@ public class InputBufferFrame : Reference
         Tick = _tick;
     }
 
-    public G.Dictionary<string, G.Dictionary<int, string>> GetPlayerInput (int _peerId)
+    public LocalPeerInputs GetPlayerInput (int _peerId)
     {
         if (Players.ContainsKey(_peerId))
             return Players[_peerId].Input;
