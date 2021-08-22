@@ -2,6 +2,6 @@
 
 public interface INetworkedInputs
 {
-    Dictionary<int, string> GetLocalInput ();
-    Dictionary<int, string> PredictRemoteInput (Dictionary<int, string> previousInput, int ticksSinceRealInput);
+    NodeInputs GetLocalInput ();
+    NodeInputs PredictRemoteInput (NodeInputs previousInput, int ticksSinceRealInput);
 }
