@@ -43,13 +43,13 @@ public class Player : Sprite, INetworkable, INetworkedInputs
         Position = Lerp(ReadString(oldState["position"]), ReadString(newState["position"]), weight);
     }
 
-    public Dictionary<int, string> GetLocalInput ()
+    public NodeInputs GetLocalInput ()
     {
         Vector2 axis = new Vector2(
             Input.GetActionStrength("player_right") - Input.GetActionStrength("player_left"),
             Input.GetActionStrength("player_down") - Input.GetActionStrength("player_up"));
 
-        Dictionary<int, string> input = new Dictionary<int, string>();
+        NodeInputs input = new NodeInputs();
 
         if (axis != Vector2.Zero)
             input[0] = axis.x + "|" + axis.y;
@@ -57,22 +57,22 @@ public class Player : Sprite, INetworkable, INetworkedInputs
         return input;
     }
 
-    public Dictionary<int, string> PredictRemoteInput (Dictionary<int, string> previousInput, int ticksSinceRealInput)
+    public NodeInputs PredictRemoteInput (NodeInputs previousInput, int ticksSinceRealInput)
     {
-        Dictionary<int, string> inputs = previousInput.Duplicate();
+        NodeInputs inputs = previousInput.Duplicate();
 
         if (ticksSinceRealInput > 5)
-            inputs.Remove(0);
+            inputs.inputs.Remove(0);
 
         return inputs;
     }
 
-    public void NetworkTick (float delta, Dictionary<int, string> input)
+    public void NetworkTick (float delta, NodeInputs input)
     {
         Vector2 axis = new Vector2();
-        if(input.Count > 0)
-            axis = ReadString(input.First().Value);
+        if(input.inputs.Count > 0)
+            axis = ReadString(input[0]);
         
-        Position += axis * 8;
+        Position += axis * 16;
     }
 }
