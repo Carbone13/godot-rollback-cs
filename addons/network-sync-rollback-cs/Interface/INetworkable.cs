@@ -6,5 +6,5 @@ public interface INetworkable
     void LoadState (Dictionary<string, string> state);
     void InterpolateState (Dictionary<string, string> oldState, Dictionary<string, string> newState, float weight);
     
-    void NetworkTick (float delta, Dictionary<int, string> input);
+    void NetworkTick (float delta, NodeInputs input);
 }

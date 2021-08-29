@@ -68,7 +68,7 @@ public class SyncManager : Node
     [Signal] public delegate void SyncError (string msg);
     
     [Signal] public delegate void SkipTickFlagged (int tick);
-    [Signal] public delegate void RollbackFlagged (int tick, int peerId, Dictionary localInput, Dictionary remoteInput);
+    [Signal] public delegate void RollbackFlagged (int tick, int peerId, LocalPeerInputs localInput, LocalPeerInputs remoteInput);
     [Signal] public delegate void RemoteStateMismatch (int tickn, int peerId, StateBufferFrame localState, StateBufferFrame remoteState);
     
     [Signal] public delegate void PeerAdded (int id);
@@ -306,17 +306,17 @@ public class SyncManager : Node
         Stop();
     }
 
-    private G.Dictionary<string, G.Dictionary<int, string>> CallGetLocalInput ()
+    private LocalPeerInputs CallGetLocalInput ()
     {
-        G.Dictionary<string, G.Dictionary<int, string>> input = new G.Dictionary<string, G.Dictionary<int, string>>();
+        LocalPeerInputs input = new LocalPeerInputs();
         Array nodes = GetTree().GetNodesInGroup("network_sync");
         
         foreach (Node node in nodes)
         {
             if (node.IsNetworkMaster() && node is INetworkedInputs networkedInputs && node.IsInsideTree())
             {
-                G.Dictionary<int, string> nodeInput = networkedInputs.GetLocalInput();
-                if (nodeInput.Count > 0)
+                var nodeInput = networkedInputs.GetLocalInput();
+                if (nodeInput.inputs.Count > 0)
                     input[node.GetPath().ToString()] = nodeInput;
             }
         }
@@ -324,9 +324,9 @@ public class SyncManager : Node
         return input;
     }
 
-    private G.Dictionary<string, G.Dictionary<int, string>> CallPredictNetworkInput (G.Dictionary<string, G.Dictionary<int, string>> previousInput, int ticksSinceRealInput)
+    private LocalPeerInputs CallPredictNetworkInput (LocalPeerInputs previousInput, int ticksSinceRealInput)
     {
-        G.Dictionary<string, G.Dictionary<int, string>> input = new G.Dictionary<string, G.Dictionary<int, string>>();
+        LocalPeerInputs input = new LocalPeerInputs();
         Array nodes = GetTree().GetNodesInGroup("network_sync");
 
         foreach (Node node in nodes)
@@ -334,9 +334,9 @@ public class SyncManager : Node
             if (node.IsNetworkMaster()) continue;
 
             var nodePathStr = node.GetPath().ToString();
-            if (previousInput.ContainsKey(nodePathStr))
+            if (previousInput.NodeInputsMap.ContainsKey(nodePathStr))
             {
-                var previousInputForNode = previousInput.ContainsKey(nodePathStr) ? previousInput[nodePathStr] : new G.Dictionary<int, string>();
+                var previousInputForNode = previousInput.NodeInputsMap.ContainsKey(nodePathStr) ? previousInput[nodePathStr] : new NodeInputs();
                 var predictedInputForNode = previousInputForNode.Duplicate();
                 if (node is INetworkedInputs networkedInputs)
                 {
@@ -344,7 +344,7 @@ public class SyncManager : Node
                         networkedInputs.PredictRemoteInput(previousInputForNode, ticksSinceRealInput);
                 }
                 
-                if (predictedInputForNode.Count > 0)
+                if (predictedInputForNode.inputs.Count > 0)
                     input[nodePathStr] = predictedInputForNode;
             }
             
@@ -365,7 +365,7 @@ public class SyncManager : Node
             if (node is INetworkable p && node.IsInsideTree())
             {
                 var playerInput = inputFrame.GetPlayerInput(node.GetNetworkMaster());
-                p.NetworkTick(delta, (playerInput.ContainsKey(node.GetPath().ToString()) ? playerInput[node.GetPath().ToString()] as G.Dictionary<int, string> : new G.Dictionary<int, string>()));
+                p.NetworkTick(delta, (playerInput.NodeInputsMap.ContainsKey(node.GetPath().ToString()) ? playerInput[node.GetPath().ToString()]: new NodeInputs()));
             }
         }
     }
@@ -445,7 +445,7 @@ public class SyncManager : Node
         {
             if (!inputFrame.Players.ContainsKey(peerId) || inputFrame.Players[peerId].Predicted)
             {
-                G.Dictionary<string, G.Dictionary<int, string>> predictedInput = new G.Dictionary<string, G.Dictionary<int, string>>();
+                LocalPeerInputs predictedInput = new LocalPeerInputs();
                 if (previousFrame != null)
                 {
                     Peer peer = _peers[peerId];
@@ -546,7 +546,7 @@ public class SyncManager : Node
         return inputFrame;
     }
 
-    public G.Dictionary<string, G.Dictionary<int, string>> GetLatestInputFromPeer (int peerID)
+    public LocalPeerInputs GetLatestInputFromPeer (int peerID)
     {
         if (_peers.ContainsKey(peerID))
         {
@@ -558,19 +558,19 @@ public class SyncManager : Node
             }
         }
 
-        return new G.Dictionary<string, G.Dictionary<int, string>>();
+        return new LocalPeerInputs();
     }
 
-    public G.Dictionary<int, string> GetLatestInputForNode (Node node)
+    public NodeInputs GetLatestInputForNode (Node node)
     {
         return GetLatestInputFromPeerForPath(node.GetNetworkMaster(), node.GetPath().ToString());
     }
     
-    public G.Dictionary<int, string> GetLatestInputFromPeerForPath (int peerID, string path)
+    public NodeInputs GetLatestInputFromPeerForPath (int peerID, string path)
     {
-        return GetLatestInputFromPeer(peerID).ContainsKey(path)
+        return GetLatestInputFromPeer(peerID).NodeInputsMap.ContainsKey(path)
             ? GetLatestInputFromPeer(peerID)[path]
-            : new G.Dictionary<int, string>();
+            : new NodeInputs();
     }
 
     public StateBufferFrame GetStateFrame (int tick)
@@ -703,6 +703,7 @@ public class SyncManager : Node
             var msg = new G.Dictionary<string, string>
             {
                 { ((int)InputMessageKey.NEXT_TICK_REQUESTED).ToString(), (peer.LastRemoteTickReceived + 1).ToString() },
+                //{ ((int)InputMessageKey.INPUT).ToString(), JSON.Print(input) }
                 { ((int)InputMessageKey.INPUT).ToString(), JSON.Print(input) }
             };
 
@@ -849,7 +850,9 @@ public class SyncManager : Node
         var localInput = CallGetLocalInput();
         CalculateInputHash(localInput);
         inputFrame.Players[GetTree().GetNetworkUniqueId()] = new InputForPlayer(localInput, false);
-        _inputSendQueue.Add(Encoding.ASCII.GetBytes(JSON.Print(localInput)));
+        //This is what sends the inputs, jesus crist, it took a long time to find it!
+        //_inputSendQueue.Add(Encoding.ASCII.GetBytes(JSON.Print(localInput)));
+        _inputSendQueue.Add(localInput.Serialize());
         
         Debug.Assert(inputTick == _inputSendQueueStartTick + _inputSendQueue.Count - 1, "Input send queue tick numbers are misaligned");
         SendInputMessagesToAllPeers();
@@ -906,22 +909,22 @@ public class SyncManager : Node
         }
     }
 
-    public void CalculateInputHash (G.Dictionary<string, G.Dictionary<int,string>> input)
+    public void CalculateInputHash (LocalPeerInputs input)
     {
-        G.Dictionary<string, G.Dictionary<int,string>> cleanedInput = input.Duplicate();
-        if (cleanedInput.ContainsKey("$"))
+        LocalPeerInputs cleanedInput = input.Duplicate();
+        if (cleanedInput.NodeInputsMap.ContainsKey("$"))
         {
-            cleanedInput.Remove("$");
+            cleanedInput.NodeInputsMap.Remove("$");
         }
 
-        foreach (string path in cleanedInput.Keys)
+        foreach (string path in cleanedInput.NodeInputsMap.Keys)
         {
-            foreach (int key in cleanedInput[path].Keys)
+            foreach (int key in cleanedInput[path].inputs.Keys)
             {
                 var value = cleanedInput[path];
                 if (key < 0)
                 {
-                    value.Remove(key);
+                    value.inputs.Remove(key);
                 }
             }
         }
@@ -976,11 +979,14 @@ public class SyncManager : Node
                 continue;
             }
 
-            string remoteInputRaw = Encoding.ASCII.GetString(ToByteArray(allRemoteInput[remoteTick])) ;
+            /*string remoteInputRaw = Encoding.ASCII.GetString(ToByteArray(allRemoteInput[remoteTick])) ;
 
             var remoteInputUnknown = JSON.Parse(remoteInputRaw).Result as Dictionary;
             G.Dictionary<string, G.Dictionary<int, string>> remoteInput =
                 new G.Dictionary<string, G.Dictionary<int, string>>(remoteInputUnknown);
+            */
+
+            LocalPeerInputs remoteInput = LocalPeerInputs.Deserialize(ToByteArray(allRemoteInput[remoteTick]));
 
             var inputFrame = GetOrCreateInputFrame(remoteTick);
             if (inputFrame == null)
@@ -997,7 +1003,8 @@ public class SyncManager : Node
                 var localInput = inputFrame.GetPlayerInput(peerID);
                 inputFrame.Players[peerID] = new InputForPlayer(remoteInput, false);
                 
-                if(JSON.Print(localInput) != JSON.Print(remoteInput))
+                //if(JSON.Print(localInput) != JSON.Print(remoteInput))
+                if(localInput.GetHashCode() != remoteInput.GetHashCode())
                 {
                     rollbackTicks = tickDelta + 1;
                     EmitSignal(nameof(RollbackFlagged), remoteTick, peerID, localInput, remoteInput);

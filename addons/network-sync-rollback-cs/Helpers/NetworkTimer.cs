@@ -64,7 +64,7 @@ public class NetworkTimer : Node, INetworkable
         
     }
 
-    public void NetworkTick (float delta, Dictionary<int, string> input)
+    public void NetworkTick (float delta, NodeInputs input)
     {
         if (!running) return;
         if (tickLeft <= 0)

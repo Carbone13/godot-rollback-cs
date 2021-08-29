@@ -46,7 +46,7 @@ public class NetworkAnimationPlayer : AnimationPlayer, INetworkable
         
     }
 
-    public void NetworkTick (float delta, Dictionary<int, string> input)
+    public void NetworkTick (float delta, NodeInputs input)
     {
         if(IsPlaying())
             Advance(delta);

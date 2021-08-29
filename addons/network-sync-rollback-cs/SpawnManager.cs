@@ -1,4 +1,4 @@
-﻿using Godot;
+using Godot;
 using Godot.Collections;
 
 public class SpawnManager : Node, INetworkable
@@ -172,7 +172,7 @@ public class SpawnManager : Node, INetworkable
         
     }
 
-    public void NetworkTick (float delta, Dictionary<int, string> input)
+    public void NetworkTick (float delta, NodeInputs input)
     {
         
     }
