@@ -37,7 +37,7 @@ public class SyncManager : Node
     public const int MAX_INPUT_BUFFER_UNDERRUNS = 300;
     public const int SKIP_TICKS_AFTER_SYNC_REGAINED = 2;
     public const bool INTERPOLATION = true;
-    public const int ROLLBACK_DEBUG_TICKS = 0;
+    public const int ROLLBACK_DEBUG_TICKS = 5;
     public const int DEBUG_MESSAGE_BYTE = 700;
     public const bool LOG_STATE = true;
 
@@ -79,9 +79,19 @@ public class SyncManager : Node
     [Signal] public delegate void TickFinished (bool isRollback);
     [Signal] public delegate void SceneSpawned (string name, Node spawnedNode, PackedScene scene, Dictionary data);
 
+    private void _Debug (int tick, int peerID, LocalPeerInputs localInput, LocalPeerInputs remoteInput)
+    {
+        GD.Print("-----");
+        GD.Print("Correcting prediction on tick " + tick + " for peer " + peerID + " (rollback " +
+                 SyncManager.singleton.rollbackTicks + " tick(s))");
+        GD.Print("Received input: " + remoteInput);
+        GD.Print("Predicted input: " + localInput);
+    }
+
     public override void _Ready ()
     {
         singleton = this;
+        Connect(nameof(RollbackFlagged), this, nameof(_Debug));
         
         // TODO move to NetworkAdaptor
         GetTree().Connect("network_peer_disconnected", this, nameof(RemovePeer));

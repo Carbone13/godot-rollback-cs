@@ -1,7 +1,7 @@
 extends Node
 
 func _ready() -> void:
-	SyncManager.connect("RollbackFlagged", self, "_on_SyncManager_rollback_flagged")
+	#SyncManager.connect("RollbackFlagged", self, "_on_SyncManager_rollback_flagged")
 	SyncManager.connect("SkipTickFlagged", self, "_on_SyncManager_skip_ticks_flagged")
 	#SyncManager.connect("RemoteStateMismatch", self, "_on_SyncManager_remote_state_mismatch")
 	SyncManager.connect("PeerPingedBack", self, "_on_SyncManager_peer_pinged_back")
@@ -12,7 +12,7 @@ func _on_SyncManager_skip_ticks_flagged(count: int) -> void:
 	print ("-----")
 	print ("Skipping %s local tick(s) to adjust for peer advantage" % count)
 
-func _on_SyncManager_rollback_flagged(tick: int, peer_id: int, local_input: Dictionary, remote_input: Dictionary) -> void:
+func _on_SyncManager_rollback_flagged(tick: int, peer_id: int, local_input, remote_input) -> void:
 	print ("-----")
 	print ("Correcting prediction on tick %s for peer %s (rollback %s tick(s))" % [tick, peer_id, SyncManager.get("rollbackTicks")])
 	print ("Received input: %s" % remote_input)
